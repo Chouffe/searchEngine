@@ -1,0 +1,43 @@
+########################################################
+#      Default Mode: Intersection queries              #
+########################################################
+
+
+1) Implicitly, Google returns the documents matching all the words in the Query
+   AND queries by default
+
+ The number of estimated results decreases if we add a new word in the search
+ => Intersection of two sets = AND
+
+ The words we type in the search bar are not necessarily near each other in the
+ document returned => Not a phrase query
+
+ But! We do not have the same results by typing 'a AND b' and 'b AND a' for any
+ a and b. Eg: Spider Man, Man Spider even though it returns fairly the same
+ amout of documents
+
+
+2) Trying to find out the stop words (to, or, the, a...)
+
+ We type queries like 'a assumed-stop-word b' and we try to find out those that
+ are removed in the preprocessing (we should get the same number of results)
+ I found that 'or' is preprocessed. It depends on the language set by Google.
+ For instance, in french the words l', le, la, les are removed from the query
+
+
+########################################################
+#      Phrase queries in Google Search engine          #
+########################################################
+
+
+1) Add double quotes to run a phrase query 
+
+ eg. "query"
+ Google returns the document containing the words close to each other
+ But it returns also well ranked pages containing or not all the words of the
+ query typed
+
+
+2) Preprocessing of the phrase queries. It removes the character ',' ';' '.'
+
+ In fact we find the same results if we search for 'a, b' than for 'a b'
