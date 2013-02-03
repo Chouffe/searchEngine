@@ -1,0 +1,22 @@
+1) Task 1.1 and 1.2
+
+cd Documents/KTH/SearchEngine/lab
+
+java -Xmx1024m -cp .:/home/chouffe/Documents/KTH/SearchEngine/lab/pdfbox:/home/chouffe/Documents/KTH/SearchEngine/lab/megamap ir.SearchGUI -d /home/chouffe/Documents/KTH/SearchEngine/lab/svwiki/files/1000
+
+
+2) Task 1.3
+
+Change in the GUI to Phrase Query
+
+
+3) Task 1.4
+
+Run 4) cause it takes time
+Open the file question4.txt
+
+
+4) Task 1.5
+
+cd index/
+java -Xmx1024m -cp .:/home/chouffe/Documents/KTH/SearchEngine/lab/pdfbox:/home/chouffe/Documents/KTH/SearchEngine/lab/megamap ir.SearchGUI -i index_1658737851 -i index_1658849283 -m
