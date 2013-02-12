@@ -89,6 +89,18 @@ public class Indexer {
                     if ( index instanceof MegaIndex ) {
                         ((MegaIndex)index).sortIndex();
                     }
+                    else
+                    {
+                        /* ((HashedIndex)index).printTf(); */
+                        ((HashedIndex)index).updateTfToW();;
+                        /* ((HashedIndex)index).printTf(); */
+                        ((HashedIndex)index).computeIdf();
+                        /* ((HashedIndex)index).printIdf(); */
+                        /* ((HashedIndex)index).printDocLengths(); */
+                        ((HashedIndex)index).buildTfIdf();
+                        /* ((HashedIndex)index).printTfIdf();; */
+                        /* ((HashedIndex)index).printIdf(); */
+                    }
                 }
             } else {
                 System.err.println( "Indexing " + f.getPath() );
