@@ -489,7 +489,7 @@ public class PageRank{
         String s = "";
 
         int i = 0;
-        int topRank = 50;
+        int topRank = docNumber.size();
 
         for(PR pr: myPageRanks)
         {

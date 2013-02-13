@@ -18,11 +18,23 @@ import java.util.ArrayList;
 import java.util.ListIterator;
 import java.lang.Math;
 import java.util.Collections;
+import java.io.*;
+import java.util.regex.*;
 
 /**
  *   Implements an inverted index as a Hashtable from words to PostingsLists.
  */
 public class HashedIndex implements Index {
+
+    /**
+     * Mapping of the docID but in reversed mapping
+     */
+    private HashMap<String, String> docIDsReversed = new HashMap<String, String>();
+
+    /**
+     * Contains the pageranks
+     */
+    private HashMap<Integer, Double> rankingScores = new HashMap<Integer, Double>();
 
     /** The index as a hashtable. */
     private HashMap<String,PostingsList> index = new HashMap<String,PostingsList>();
@@ -51,6 +63,23 @@ public class HashedIndex implements Index {
      * Store the wtq of the query
      */
     private HashMap<String, Double> wtq  = new HashMap<String, Double>();
+
+    public void buildDocIDsReversed()
+    {
+        String regex = ".*\\/(\\d+)\\.txt$";
+        Pattern pattern = Pattern.compile(regex);
+        for(Map.Entry<String, String> e: docIDs.entrySet())
+        {
+            Matcher matcher = pattern.matcher(e.getValue());
+            if(matcher.matches())
+            {
+                String idDoc = matcher.group(1);
+                docIDsReversed.put(idDoc, e.getKey());
+            }
+        }
+
+        /* printDocIDsReversed(); */
+    }
 
     /**
      *  Inserts this token in the index.
@@ -149,14 +178,38 @@ public class HashedIndex implements Index {
 
     public void updateTfToW()
     {
-
+        // Can try with different types of frequencies
         int N = index.size();
+        HashMap<Integer, Double> maxFt = new HashMap<Integer, Double>();
+
+        // Fill the maxFt hashMap
+        /* for(Map.Entry<String, HashMap<Integer, Double>> tft : tf.entrySet()) */
+        /* { */
+        /*     String t = tft.getKey(); */
+        /*     for(Map.Entry<Integer, Double> tftd: tft.getValue().entrySet()) */
+        /*     {  */
+        /*         int d = tftd.getKey(); */
+        /*         if(!maxFt.containsKey(d)) */
+        /*         { */
+        /*             maxFt.put(d, 0.); */
+        /*         } */
+
+        /*         if(maxFt.get(d) < tftd.getValue()) */
+        /*         { */
+        /*             maxFt.put(d, tftd.getValue()); */
+        /*         } */
+        /*     } */
+        /* } */
+
         for(Map.Entry<String, HashMap<Integer, Double>> tft : tf.entrySet())
         {
             for(Map.Entry<Integer, Double> tftd: tft.getValue().entrySet())
             { 
-                int docLength = docLengths.get("" + tftd.getKey());
-                tft.getValue().put(tftd.getKey(), 1. + Math.log(100*tftd.getValue()/docLength)/Math.log(10));
+                Integer docLength = docLengths.get("" + tftd.getKey());
+                /* tft.getValue().put(tftd.getKey(), 1. + Math.log(tftd.getValue())/Math.log(10)); */
+                /* tft.getValue().put(tftd.getKey(), 1. + Math.log(100*tftd.getValue()/docLength)/Math.log(10)); */
+                tft.getValue().put(tftd.getKey(), tftd.getValue()/docLength.floatValue());
+                /* tft.getValue().put(tftd.getKey(), tftd.getValue()/maxFt.get(tftd.getKey())); */
             }
         }
     }
@@ -170,6 +223,7 @@ public class HashedIndex implements Index {
         {
                 double dfTerm = (double) dft.getValue().size();
                 double idfTerm = Math.log(N/dfTerm)/Math.log(10);
+                /* double idfTerm = Math.log(N/dfTerm); */
                 idf.put(dft.getKey(), idfTerm);
         }
 
@@ -260,6 +314,8 @@ public class HashedIndex implements Index {
             for(Map.Entry<Integer, Double> tfIdftd: tfIdft.getValue().entrySet())
             {
                 int d = tfIdftd.getKey();
+                int docLength = docLengths.get("" + d);
+                /* tfIdft.getValue().put(d, tfIdftd.getValue() / docLength); */
                 tfIdft.getValue().put(d, tfIdftd.getValue() / norm);
             }
         }
@@ -329,9 +385,7 @@ public class HashedIndex implements Index {
             System.out.println("Ranked Query");
 
             result = null;
-
             buildWtq(query);
-            /* printWtq(); */
 
             int i = 0;
             for(String term: query.getTerms())
@@ -354,8 +408,25 @@ public class HashedIndex implements Index {
 
                 i++;
             }
+            /* printWtq(); */
 
-            result = scorePostingsList(cosineScore(query), result);
+            if( rankingType == Index.TF_IDF)
+            {
+                result = scorePostingsList(cosineScore(query), result);
+            }
+            else if(rankingType == Index.PAGERANK)
+            {
+                result = scorePostingsList(pageRankScoring(query), result);
+                System.out.println("Pagerank");
+            }
+            // Combination
+            else
+            {
+                result = scorePostingsList(combinationScoring(query), result);
+                System.out.println("Combination");
+
+            }
+
             Collections.sort(result.getList());
 
             // Print out
@@ -503,6 +574,108 @@ public class HashedIndex implements Index {
         return p;
     }
 
+    /**
+     * Compute the scores according to the pagerank only
+     */
+    protected HashMap<Integer, Double> pageRankScoring(Query query)
+    {
+        HashMap<Integer, Double> scores = new HashMap<Integer, Double>();
+
+        for(String t: query.getTerms())
+        {
+            // Calculate wtq and fetch postings list for t
+            PostingsList p = getPostings(t);
+            for(PostingsEntry pe: p.getList())
+            {
+                // Scalar Product
+                int d = pe.getDocID();
+
+                if(scores.containsKey(d))
+                {
+                    scores.put(d, rankingScores.get(d));
+                }
+                else
+                {
+                    scores.put(d, rankingScores.get(d));
+                }
+            }
+        }
+
+        return scores;
+    }
+
+    /**
+     * Computes a score given a pagerank and a tfidf
+     * alpha = MAXTFIDF/MAXPAGERANK
+     */
+    protected double heuristicCombination(double tfidf, double pagerank, double alpha)
+    {
+        // A PageRank is more important than a popular page
+        double coeff = 1.1; // 10% More important
+        return tfidf + alpha*pagerank*coeff;
+    }
+
+
+    /**
+     * Computes the scores according to the tfidf and the pageranks
+     */
+    protected HashMap<Integer, Double> combinationScoring(Query query)
+    {
+        HashMap<Integer, Double> scores = new HashMap<Integer, Double>();
+
+        for(String t: query.getTerms())
+        {
+            // Calculate wtq and fetch postings list for t
+            PostingsList p = getPostings(t);
+            for(PostingsEntry pe: p.getList())
+            {
+                // Scalar Product
+                int d = pe.getDocID();
+
+                if(scores.containsKey(d))
+                {
+                    scores.put(d, scores.get(d) + wtq.get(t) * tfIdf.get(t).get(d));
+                }
+                else
+                {
+                    scores.put(d, wtq.get(t) * tfIdf.get(t).get(d));
+                }
+            }
+        }
+
+        // We find the normalization factor between tfidf and pageranks
+        double maxTFIDF = 0.;
+        double maxPAGERANK = 0.;
+        for(Map.Entry<Integer, Double> entry: scores.entrySet())
+        {
+            if(entry.getValue() > maxTFIDF)
+            {
+                maxTFIDF = entry.getValue();
+            }
+        }
+
+        for(Map.Entry<Integer, Double> entry: rankingScores.entrySet())
+        {
+            if(entry.getValue() > maxPAGERANK)
+            {
+                maxPAGERANK = entry.getValue();
+            }
+        }
+
+
+        for(Map.Entry<Integer, Double> entry: scores.entrySet())
+        {
+            double combinatedScore = 0.;
+            combinatedScore = heuristicCombination(entry.getValue(), rankingScores.get(entry.getKey()), maxTFIDF/maxPAGERANK);
+            scores.put(entry.getKey(), combinatedScore);
+        }
+
+        return scores;
+    }
+
+    /**
+     * Computes the scores according to the tfidf only
+     */
     protected HashMap<Integer, Double> cosineScore(Query query)
     {
         HashMap<Integer, Double> scores = new HashMap<Integer, Double>();
@@ -528,11 +701,13 @@ public class HashedIndex implements Index {
         }
 
         // Print out
-        /* for(Map.Entry<Integer, Double> entry: scores.entrySet()) */
-        /* { */
-        /*     int d = entry.getKey(); */
-        /*     System.out.println(entry.getValue() + " -> " + docIDs.get("" + d)); */
-        /* } */
+        for(Map.Entry<Integer, Double> entry: scores.entrySet())
+        {
+            int d = entry.getKey();
+            int docLength = docLengths.get("" + entry.getKey());
+            /* scores.put(entry.getKey(), entry.getValue()/docLength); */
+            /* System.out.println(entry.getValue() + " -> " + docIDs.get("" + d)); */
+        }
 
         return scores;
     }
@@ -678,6 +853,68 @@ public class HashedIndex implements Index {
         }
     } 
 
+    public void printDocIDsReversed()
+    {
+        for(Map.Entry<String, String> e: docIDsReversed.entrySet())
+        {
+            System.out.println(e.getKey() + "->" + e.getValue());
+        }
+
+    }
+
+
+    public void retrievePageRank()
+    {
+        BufferedReader br = null;
+
+        try {
+
+            String sCurrentLine;
+
+            br = new BufferedReader(new FileReader("power-iteration"));
+
+            // TODO
+            while ((sCurrentLine = br.readLine()) != null) {
+                String[] data = sCurrentLine.split(",");
+                /* System.out.println(data[0] + " -> " + data[1]); */
+                int idDoc = Integer.parseInt(data[0]);
+                if(docIDsReversed.containsKey("" + idDoc))
+                {
+                    System.out.println("contains " + idDoc);
+                    /* System.out.println(docIDsReversed.get("" + idDoc)); */
+                    rankingScores.put(Integer.parseInt(docIDsReversed.get("" + idDoc)), Double.parseDouble(data[1]));
+                }
+                /* System.out.println(data); */
+
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (br != null)br.close();
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+        }
+
+        /* BufferedReader br = new BufferedReader(new FileReader("power-iteration")); */
+        /* try { */
+        /*     StringBuilder sb = new StringBuilder(); */
+        /*     String line = br.readLine(); */
+
+        /*     while (line != null) { */
+        /*         sb.append(line); */
+        /*         sb.append("\n"); */
+        /*         line = br.readLine(); */
+        /*     } */
+        /*     String everything = sb.toString(); */
+        /*     System.out.println(everything); */
+        /* } finally { */
+        /*     br.close(); */
+        /* } */
+
+    }
     /* public void scorePostingsList(PostingsLists p, String term) */
     /* { */
     /*     int N = p.getList().size(); */

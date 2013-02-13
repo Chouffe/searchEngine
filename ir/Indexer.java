@@ -98,6 +98,8 @@ public class Indexer {
                         /* ((HashedIndex)index).printIdf(); */
                         /* ((HashedIndex)index).printDocLengths(); */
                         ((HashedIndex)index).buildTfIdf();
+                        ((HashedIndex)index).buildDocIDsReversed();
+                        ((HashedIndex)index).retrievePageRank();
                         /* ((HashedIndex)index).printTfIdf();; */
                         /* ((HashedIndex)index).printIdf(); */
                     }
