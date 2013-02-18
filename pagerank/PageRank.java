@@ -60,7 +60,7 @@ public class PageRank{
      *   Convergence criterion: Transition probabilities do not 
      *   change more that EPSILON from one iteration to another.
      */
-    final static double EPSILON = 0.0001;
+    final static double EPSILON = 0.00001;
 
     /**
      *   Never do more than this number of iterations regardless
@@ -75,10 +75,10 @@ public class PageRank{
     public PageRank( String filename ) {
         int noOfDocs = readDocs( filename );
         buildIdToNameDoc();
-        computePagerank( noOfDocs );
-        computeApproximatedPageRank(1);
-        computeApproximatedPageRank(2);
-        computeApproximatedPageRank(3);
+        computePagerank( noOfDocs, true, "power-iteration" );
+        computeApproximatedPageRank(1, true, "method1");
+        computeApproximatedPageRank(2, true, "method2");
+        computeApproximatedPageRank(3, true, "method3");
     }
 
 
@@ -176,7 +176,7 @@ public class PageRank{
     /*
      *   Computes the pagerank of each document.
      */
-    void computePagerank( int numberOfDocs ) {
+    void computePagerank( int numberOfDocs, boolean save, String filename ) {
 
         double c = 1. - BORED;
         int N = docNumber.size();
@@ -232,7 +232,7 @@ public class PageRank{
 
         /* printArray(x); */
         System.out.println("Num iterations: " + numIter);
-        printSortedPageRank(x, true, "power-iteration");
+        printSortedPageRank(x, save, filename); 
         /* sumArray(x); */
         /* printDocNumber(); */
     }
@@ -353,7 +353,7 @@ public class PageRank{
     }
 
 
-    public void computeApproximatedPageRank(int method)
+    public void computeApproximatedPageRank(int method, boolean save, String filename)
     {
         Random randomGenerator = new Random();
         double c = 1. - BORED;
@@ -455,7 +455,7 @@ public class PageRank{
         /*     n[i] = n[i] / sum; */
         /* } */
 
-        printSortedPageRank(n, true, "method"+method);
+        printSortedPageRank(n, save, filename);
     }
 
     
