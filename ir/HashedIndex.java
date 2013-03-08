@@ -62,7 +62,7 @@ public class HashedIndex implements Index {
     /**
      * Store the wtq of the query
      */
-    private HashMap<String, Double> wtq  = new HashMap<String, Double>();
+    /* private HashMap<String, Double> wtq  = new HashMap<String, Double>(); */
 
     public void buildDocIDsReversed()
     {
@@ -382,10 +382,10 @@ public class HashedIndex implements Index {
         // Ranked queries
         else if ( queryType == Index.RANKED_QUERY )
         {
-            System.out.println("Ranked Query");
+            /* System.out.println("Ranked Query"); */
 
             result = null;
-            buildWtq(query);
+            query.buildWtq();
 
             int i = 0;
             for(String term: query.getTerms())
@@ -417,13 +417,13 @@ public class HashedIndex implements Index {
             else if(rankingType == Index.PAGERANK)
             {
                 result = scorePostingsList(pageRankScoring(query), result);
-                System.out.println("Pagerank");
+                /* System.out.println("Pagerank"); */
             }
             // Combination
             else
             {
                 result = scorePostingsList(combinationScoring(query), result);
-                System.out.println("Combination");
+                /* System.out.println("Combination"); */
 
             }
 
@@ -538,31 +538,6 @@ public class HashedIndex implements Index {
 
     }
 
-    protected void buildWtq(Query query)
-    {
-        int sum = 0;
-        for(String term: query.getTerms())
-        {
-            wtq.put(term, 1.);
-            sum += 1;
-        }
-
-        // Normalization
-        for(Map.Entry<String, Double> entry: wtq.entrySet())
-        {
-            wtq.put(entry.getKey(), entry.getValue() / Math.sqrt(sum));
-        }
-
-    }
-
-    public void printWtq()
-    {
-        System.out.println("Number of tokens: " + wtq.size());
-        for(Map.Entry<String, Double> entry: wtq.entrySet())
-        {
-            System.out.println(entry.getKey() + " -> " + entry.getValue());
-        }
-    }
 
     protected PostingsList scorePostingsList(HashMap<Integer, Double> scores, PostingsList p)
     {
@@ -584,6 +559,7 @@ public class HashedIndex implements Index {
         for(String t: query.getTerms())
         {
             // Calculate wtq and fetch postings list for t
+            query.buildWtq();
             PostingsList p = getPostings(t);
             for(PostingsEntry pe: p.getList())
             {
@@ -626,6 +602,7 @@ public class HashedIndex implements Index {
         for(String t: query.getTerms())
         {
             // Calculate wtq and fetch postings list for t
+            query.buildWtq();
             PostingsList p = getPostings(t);
             for(PostingsEntry pe: p.getList())
             {
@@ -634,11 +611,11 @@ public class HashedIndex implements Index {
 
                 if(scores.containsKey(d))
                 {
-                    scores.put(d, scores.get(d) + wtq.get(t) * tfIdf.get(t).get(d));
+                    scores.put(d, scores.get(d) + query.getWtq().get(t) * tfIdf.get(t).get(d));
                 }
                 else
                 {
-                    scores.put(d, wtq.get(t) * tfIdf.get(t).get(d));
+                    scores.put(d, query.getWtq().get(t) * tfIdf.get(t).get(d));
                 }
             }
         }
@@ -683,6 +660,7 @@ public class HashedIndex implements Index {
         for(String t: query.getTerms())
         {
             // Calculate wtq and fetch postings list for t
+            query.buildWtq();
             PostingsList p = getPostings(t);
             for(PostingsEntry pe: p.getList())
             {
@@ -691,11 +669,11 @@ public class HashedIndex implements Index {
 
                 if(scores.containsKey(d))
                 {
-                    scores.put(d, scores.get(d) + wtq.get(t) * tfIdf.get(t).get(d));
+                    scores.put(d, scores.get(d) + query.getWtq().get(t) * tfIdf.get(t).get(d));
                 }
                 else
                 {
-                    scores.put(d, wtq.get(t) * tfIdf.get(t).get(d));
+                    scores.put(d, query.getWtq().get(t) * tfIdf.get(t).get(d));
                 }
             }
         }
@@ -880,7 +858,7 @@ public class HashedIndex implements Index {
                 int idDoc = Integer.parseInt(data[0]);
                 if(docIDsReversed.containsKey("" + idDoc))
                 {
-                    System.out.println("contains " + idDoc);
+                    /* System.out.println("contains " + idDoc); */
                     /* System.out.println(docIDsReversed.get("" + idDoc)); */
                     rankingScores.put(Integer.parseInt(docIDsReversed.get("" + idDoc)), Double.parseDouble(data[1]));
                 }

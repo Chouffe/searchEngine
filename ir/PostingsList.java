@@ -112,9 +112,6 @@ public class PostingsList implements Serializable {
     {
         return list;
     }
-    //
-    //  YOUR CODE HERE
-    //
 }
 
 

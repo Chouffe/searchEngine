@@ -48,6 +48,16 @@ public class PostingsEntry implements Comparable<PostingsEntry>, Serializable {
         indexOfList.add( offset );
     }
 
+    public PostingsEntry(PostingsEntry pe)
+    {
+        // We clone everything
+
+        this.docID = pe.getDocID();
+        this.score = pe.getScore();
+        this.indexOfList = new LinkedList<Integer>();
+
+    }
+
 
     public int getDocID()
     {
