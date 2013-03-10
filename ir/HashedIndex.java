@@ -90,6 +90,9 @@ public class HashedIndex implements Index {
         updateTf(token, docID);
         updateDf(token, docID);
 
+        // Construct direct Mapping
+        this._insertIntoDirectMapping(token, docID);
+
         if( index.containsKey(token) )
         {
             PostingsList p = index.get(token);
@@ -113,6 +116,37 @@ public class HashedIndex implements Index {
             p.add(docID, offset);
             index.put(token, p);
         }
+    }
+
+    private void _insertIntoDirectMapping( String token, int docID )
+    {
+        /* HashSet<String> tokenList = new HashSet<String>(); */
+        HashMap<String, Integer> tokenList = new HashMap<String, Integer>();
+
+        if( directMapping.containsKey("" + docID) )
+        {
+            tokenList = directMapping.get("" + docID);
+        }
+        /* else */
+        /* { */
+        /*     tokenList = new ArrayList<String>(); */
+        /* } */
+
+        if(tokenList.containsKey(token))
+        {
+            tokenList.put(token, tokenList.get(token) + 1);
+        }
+        else
+        {
+            tokenList.put(token, 1);
+        }
+
+
+        /* tokenList.add(token); */
+        /* System.out.println(tokenList); */
+        directMapping.put("" + docID, tokenList);
+        /* directMapping.put("" + docID, new ArrayList<String>()); */
+
     }
 
     public void updateTf(String token, int docID)
@@ -385,7 +419,7 @@ public class HashedIndex implements Index {
             /* System.out.println("Ranked Query"); */
 
             result = null;
-            query.buildWtq();
+            query.buildWtq(Index.HASHED_INDEX);
 
             int i = 0;
             for(String term: query.getTerms())
@@ -559,7 +593,7 @@ public class HashedIndex implements Index {
         for(String t: query.getTerms())
         {
             // Calculate wtq and fetch postings list for t
-            query.buildWtq();
+            query.buildWtq(Index.HASHED_INDEX);
             PostingsList p = getPostings(t);
             for(PostingsEntry pe: p.getList())
             {
@@ -602,7 +636,7 @@ public class HashedIndex implements Index {
         for(String t: query.getTerms())
         {
             // Calculate wtq and fetch postings list for t
-            query.buildWtq();
+            query.buildWtq(Index.HASHED_INDEX);
             PostingsList p = getPostings(t);
             for(PostingsEntry pe: p.getList())
             {
@@ -660,7 +694,7 @@ public class HashedIndex implements Index {
         for(String t: query.getTerms())
         {
             // Calculate wtq and fetch postings list for t
-            query.buildWtq();
+            query.buildWtq(Index.HASHED_INDEX);
             PostingsList p = getPostings(t);
             for(PostingsEntry pe: p.getList())
             {
@@ -677,16 +711,6 @@ public class HashedIndex implements Index {
                 }
             }
         }
-
-        // Print out
-        for(Map.Entry<Integer, Double> entry: scores.entrySet())
-        {
-            int d = entry.getKey();
-            int docLength = docLengths.get("" + entry.getKey());
-            /* scores.put(entry.getKey(), entry.getValue()/docLength); */
-            /* System.out.println(entry.getValue() + " -> " + docIDs.get("" + d)); */
-        }
-
         return scores;
     }
     /**
@@ -701,8 +725,6 @@ public class HashedIndex implements Index {
 
         while(it1.hasNext() && it2.hasNext())
         {
-            /* it1.next(); */
-            /* it2.next(); */
             int docID1 = ((PostingsEntry)it1.next()).getDocID(); 
             int docID2 = ((PostingsEntry)it2.next()).getDocID(); 
 

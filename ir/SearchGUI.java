@@ -345,46 +345,53 @@ public class SearchGUI extends JFrame {
      *   Decodes the command line arguments.
      */
     private void decodeArgs( String[] args ) {
-	int i=0, j=0;
-	while ( i < args.length ) {
-	    if ( "-i".equals( args[i] )) {
-		i++;
-		if ( j++ >= MAX_NUMBER_OF_INDEX_FILES ) {
-		    System.err.println( "Too many index files specified" );
-		    break;
-		}
-		if ( i < args.length ) {
-		    indexFiles.add( args[i++] );
-		}
-	    } 
-	    else if ( "-d".equals( args[i] )) {
-		i++;
-		if ( i < args.length ) {
-		    dirNames.add( args[i++] );
-		}
-	    }
-	    else if ( "-m".equals( args[i] )) {
-		i++;
-		indexType = Index.MEGA_INDEX;
-	    }
-	    else {
-		System.err.println( "Unknown option: " + args[i] );
-		break;
-	    }
-	}
-	//  It might take a long time to create a MegaIndex. Meanwhile no searches
-	//  should be carried out (it would result in a NullPointerException).
-	//  Therefore the access to the index must be synchronized.
-	synchronized ( indexLock ) {
-	    if ( indexType == Index.HASHED_INDEX ) {
-		indexer = new Indexer();
-	    }
-	    else {
-		resultWindow.setText( "\n  Creating MegaIndex, please wait... " );
-		indexer = new Indexer( indexFiles );
-		resultWindow.setText( "\n  Done!" );
-	    }
-	}
+        int i=0, j=0;
+        while ( i < args.length ) {
+            if ( "-i".equals( args[i] )) {
+                i++;
+                if ( j++ >= MAX_NUMBER_OF_INDEX_FILES ) {
+                    System.err.println( "Too many index files specified" );
+                    break;
+                }
+                if ( i < args.length ) {
+                    indexFiles.add( args[i++] );
+                }
+            } 
+            else if ( "-d".equals( args[i] )) {
+                i++;
+                if ( i < args.length ) {
+                    dirNames.add( args[i++] );
+                }
+            }
+            else if ( "-b".equals( args[i] )) {
+                i++;
+                if ( i < args.length ) {
+                    dirNames.add( args[i++] );
+                }
+                indexType = Index.BIWORD_INDEX;
+            }
+            else if ( "-m".equals( args[i] )) {
+                i++;
+                indexType = Index.MEGA_INDEX;
+            }
+            else {
+                System.err.println( "Unknown option: " + args[i] );
+                break;
+            }
+        }
+        //  It might take a long time to create a MegaIndex. Meanwhile no searches
+        //  should be carried out (it would result in a NullPointerException).
+        //  Therefore the access to the index must be synchronized.
+        synchronized ( indexLock ) {
+            if ( indexType == Index.HASHED_INDEX || indexType == Index.BIWORD_INDEX ) {
+                indexer = new Indexer(indexType);
+            }
+            else {
+                resultWindow.setText( "\n  Creating MegaIndex, please wait... " );
+                indexer = new Indexer( indexFiles );
+                resultWindow.setText( "\n  Done!" );
+            }
+        }
     }				    
 
 

@@ -56,8 +56,16 @@ public class Indexer {
     /**
      *  Initializes the index as a HashedIndex.
      */
-    public Indexer() {
-        index = new HashedIndex();
+    public Indexer(int indexType) {
+        if( indexType == Index.HASHED_INDEX )
+        {
+            index = new HashedIndex();
+        }
+        else if( indexType == Index.BIWORD_INDEX )
+        {
+            index = new BiwordIndex();
+        }
+
     }
 
     /** 
@@ -89,26 +97,28 @@ public class Indexer {
                     if ( index instanceof MegaIndex ) {
                         ((MegaIndex)index).sortIndex();
                     }
-                    else
+                    else if( index instanceof HashedIndex )
                     {
-                        /* ((HashedIndex)index).printTf(); */
                         ((HashedIndex)index).updateTfToW();;
-                        /* ((HashedIndex)index).printTf(); */
                         ((HashedIndex)index).computeIdf();
-                        /* ((HashedIndex)index).printIdf(); */
-                        /* ((HashedIndex)index).printDocLengths(); */
                         ((HashedIndex)index).buildTfIdf();
                         ((HashedIndex)index).buildDocIDsReversed();
                         ((HashedIndex)index).retrievePageRank();
-                        /* ((HashedIndex)index).printTfIdf();; */
-                        /* ((HashedIndex)index).printIdf(); */
+                    }
+                    else
+                    {
+                        ((BiwordIndex)index).updateTfToW();;
+                        ((BiwordIndex)index).computeIdf();
+                        ((BiwordIndex)index).buildTfIdf();
+                        /* ((BiwordIndex)index).buildDocIDsReversed(); */
+                        /* ((BiwordIndex)index).retrievePageRank(); */
                     }
                 }
             } else {
                 System.err.println( "Indexing " + f.getPath() );
                 // First register the document and get a docID
                 int docID;
-                if ( index instanceof HashedIndex ) {
+                if ( index instanceof HashedIndex || index instanceof BiwordIndex ) {
                     // For HashedIndex, use integers.
                     docID = generateDocID();
                 }
@@ -144,12 +154,29 @@ public class Indexer {
                         reader = new FileReader( f );
                     }
                     SimpleTokenizer tok = new SimpleTokenizer( reader );
-                    int offset = 0;
-                    while ( tok.hasMoreTokens() ) {
-                        insertIntoIndex( docID, tok.nextToken(), offset++ );
+                    if( index instanceof HashedIndex || index instanceof MegaIndex)
+                    {
+                        int offset = 0;
+                        while ( tok.hasMoreTokens() ) {
+                            insertIntoIndex( docID, tok.nextToken(), offset++ );
+                        }
+                        index.docLengths.put( "" + docID, offset );
+                        reader.close();
                     }
-                    index.docLengths.put( "" + docID, offset );
-                    reader.close();
+                    else if(index instanceof BiwordIndex)
+                    {
+                        int offset = 0;
+                        String firstPartBigram = tok.nextToken();
+                        while ( tok.hasMoreTokens() ) {
+                            String secondPartBigram = tok.nextToken();
+                            insertIntoIndex( docID, firstPartBigram + "-" + secondPartBigram, offset++ );
+                            /* System.out.println(docID + " -> " + firstPartBigram + "-" + secondPartBigram); */
+                            firstPartBigram = secondPartBigram;
+                        }
+                        index.docLengths.put( "" + docID, offset );
+                        reader.close();
+
+                    }
 
                 }
                 catch ( IOException e ) {

@@ -17,6 +17,7 @@ public interface Index {
     /* Index types */
     public static final int HASHED_INDEX = 0;
     public static final int MEGA_INDEX = 1;
+    public static final int BIWORD_INDEX = 2;
 
     /* Query types */
     public static final int INTERSECTION_QUERY = 0;
@@ -30,6 +31,10 @@ public interface Index {
 	
     public HashMap<String, String> docIDs = new HashMap<String,String>();
     public HashMap<String,Integer> docLengths = new HashMap<String,Integer>();
+    /** 
+     * Mapping of docID -- List terms in the doc
+     */
+    public HashMap<String, HashMap<String, Integer>> directMapping = new HashMap<String, HashMap<String, Integer>>();
 
     public void insert( String token, int docID, int offset );
     public PostingsList getPostings( String token );
