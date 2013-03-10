@@ -19,6 +19,10 @@ import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.event.*;
+import java.util.Collections;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.HashMap;
 
 
 /**
@@ -28,6 +32,11 @@ public class SearchGUI extends JFrame {
 
     /**  The indexer creating the search index. */
     Indexer indexer;
+
+    public int LIMIT_K = 10;
+
+    /** An Array of Indexer to perform searches on different indexes */
+    Indexer[] indexerList = null;
 
 	/**  The query posed by the user, used in search() and relevanceFeedbackSearch() */
 	private Query query; 
@@ -175,11 +184,74 @@ public class SearchGUI extends JFrame {
 		    // Normalize the search string and turn it into a Query
 		    String queryString = SimpleTokenizer.normalize( queryWindow.getText() );
 		    query = new Query( queryString );
+            /* System.out.println(query.getTerms()); */
 		    // Search and print results. Access to the index is synchronized since
 		    // we don't want to search at the same time we're indexing new files
 		    // (this might corrupt the index).
 		    synchronized ( indexLock ) {
-			results = indexer.index.search( query, queryType, rankingType ); 
+                if( indexerList != null && indexerList.length > 0 )
+                {
+                    if(indexerList[0] != null && indexerList[1] != null)
+                    {
+                        // Clone the initial Query
+                        Query initialQuery = query.copy();
+                        PostingsList resultsBiwordIndex = indexerList[1].index.search( initialQuery, queryType, rankingType );
+                        results = resultsBiwordIndex;
+
+                        if( resultsBiwordIndex.getList().size() < LIMIT_K)
+                        {
+
+                            PostingsList resultsHashedIndex = indexerList[0].index.search( query, queryType, rankingType );
+                            results = resultsHashedIndex;
+                            // 1) get the min value of resultsBiwordIndex
+                            Collections.sort(resultsBiwordIndex.getList());
+                            /* System.out.println(resultsBiwordIndex); */
+                            double min = resultsBiwordIndex.getMaxScore();
+                            System.out.println("Min: " + min + " - Max: " + resultsBiwordIndex.getMinScore());
+                            double factor = .95;
+                            // 2) get the max value of resultsHashedIndex
+                            Collections.sort(resultsHashedIndex.getList());
+                            /* System.out.println(resultsHashedIndex); */
+                            double max = resultsHashedIndex.getMinScore();
+                            System.out.println("Min: " + resultsHashedIndex.getMinScore() + " - Max: " + max);
+                            // 3) Scale all the score in resultsHashedIndex
+                            for(PostingsEntry pe: resultsHashedIndex.getList())
+                            {
+                                pe.score = pe.score * min * factor / max;
+                            }
+                            // 4) Sum up the scores and merge
+                            for(PostingsEntry pe: resultsBiwordIndex.getList())
+                            {
+                                if( results.contains(pe.getDocID()))
+                                {
+                                    //TODO
+                                    // We get the index and the posting entry
+                                    for(PostingsEntry pe2: results.getList())
+                                    {
+                                        if(pe2.getDocID()== pe.getDocID())
+                                        {
+                                            pe2.score += pe.getScore();
+                                            break;
+                                        }
+
+                                    }
+                                }
+                                else
+                                {
+                                    System.out.println("Fail...!;lfe");
+                                    results.add(pe);
+                                }
+
+                            }
+                        }
+                        // Sort them by score
+                        Collections.sort(results.getList());
+                    }
+                }
+                else
+                {
+                    results = indexer.index.search( query, queryType, rankingType ); 
+                }
 		    }
 		    StringBuffer buf = new StringBuffer();
 		    if ( results != null ) {
@@ -327,14 +399,39 @@ public class SearchGUI extends JFrame {
      *   corrupt the index).
      */
     private void index() {
-	synchronized ( indexLock ) {
-	    resultWindow.setText( "\n  Indexing, please wait..." );
-	    for ( int i=0; i<dirNames.size(); i++ ) {
-		File dokDir = new File( dirNames.get( i ));
-		indexer.processFiles( dokDir );
-	    }
-	    resultWindow.setText( "\n  Done!" );
-	}
+
+        synchronized ( indexLock ) {
+            resultWindow.setText( "\n  Indexing, please wait..." );
+            if( indexerList != null && indexerList.length > 0 )
+            {
+                if(indexerList[0] != null && indexerList[1] != null)
+                {
+                    multipleIndex();
+                }
+            }
+            else
+            {
+                for ( int i=0; i<dirNames.size(); i++ ) {
+                    File dokDir = new File( dirNames.get( i ));
+                    indexer.processFiles( dokDir );
+                }
+            }
+            resultWindow.setText( "\n  Done!" );
+        }
+    };
+
+    private void multipleIndex() {
+        // First pass for the Biword
+        for ( int i=0; i<dirNames.size(); i++ ) {
+            File dokDir = new File( dirNames.get( i ));
+            indexerList[0].processFiles( dokDir );
+        }
+
+        // Second pass for the HashedIndex
+        for ( int i=0; i<dirNames.size(); i++ ) {
+            File dokDir = new File( dirNames.get( i ));
+            indexerList[1].processFiles( dokDir );
+        }
     };
 
 
@@ -374,6 +471,14 @@ public class SearchGUI extends JFrame {
                 i++;
                 indexType = Index.MEGA_INDEX;
             }
+            else if ( "-z".equals( args[i] )) {
+                i++;
+                if ( i < args.length ) {
+                    dirNames.add( args[i++] );
+                }
+                indexType = -1000;
+                indexerList = new Indexer[2];
+            }
             else {
                 System.err.println( "Unknown option: " + args[i] );
                 break;
@@ -386,10 +491,16 @@ public class SearchGUI extends JFrame {
             if ( indexType == Index.HASHED_INDEX || indexType == Index.BIWORD_INDEX ) {
                 indexer = new Indexer(indexType);
             }
-            else {
+            else if( indexType == Index.MEGA_INDEX) {
                 resultWindow.setText( "\n  Creating MegaIndex, please wait... " );
                 indexer = new Indexer( indexFiles );
                 resultWindow.setText( "\n  Done!" );
+            }
+            else
+            {
+                indexerList[0] = new Indexer(Index.HASHED_INDEX);
+                indexer = indexerList[0];
+                indexerList[1] = new Indexer(Index.BIWORD_INDEX);
             }
         }
     }				    
@@ -399,10 +510,10 @@ public class SearchGUI extends JFrame {
 
 
     public static void main( String[] args ) {
-	SearchGUI s = new SearchGUI();
-	s.createGUI();
-	s.decodeArgs( args );
-	s.index();
+        SearchGUI s = new SearchGUI();
+        s.createGUI();
+        s.decodeArgs( args );
+        s.index();
     }
 
 }

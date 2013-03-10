@@ -26,7 +26,7 @@ public class Query {
     /**
      * Store the wtq of the query
      */
-    private HashMap<String, Double> wtq  = new HashMap<String, Double>();
+    public HashMap<String, Double> wtq  = new HashMap<String, Double>();
 
 
     /**
@@ -61,6 +61,7 @@ public class Query {
 		Query queryCopy = new Query();
 		queryCopy.terms = (LinkedList<String>) terms.clone();
 		queryCopy.weights = (LinkedList<Double>) weights.clone();
+        queryCopy.wtq = (HashMap<String, Double>) ((HashMap<String, Double>) wtq).clone();
 		return queryCopy;
 	}
 	

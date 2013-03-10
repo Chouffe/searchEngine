@@ -112,6 +112,16 @@ public class PostingsList implements Serializable {
     {
         return list;
     }
+
+    public double getMaxScore()
+    {
+        return  list.getLast().getScore();
+    }
+
+    public double getMinScore()
+    {
+        return  list.getFirst().getScore();
+    }
 }
 
 
