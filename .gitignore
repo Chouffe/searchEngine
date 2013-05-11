@@ -10,7 +10,7 @@ svwiki_links/
 
 # Vim swap files
 ###################
-*.swp
+*.sw*
 
 # Compiled source #
 ###################
